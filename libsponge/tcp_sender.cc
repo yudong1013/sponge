@@ -70,7 +70,7 @@ void TCPSender::fill_window() {
 //! \param window_size The remote receiver's advertised window size
 void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) {
     auto abs_ackno = unwrap(ackno, _isn, next_seqno_absolute());
-    if (abs_ackno > next_seqno_absolute()) return; // window start after the next seqno
+    if (abs_ackno > next_seqno_absolute()) return; // the ACK is invalid as it acks data that doesn't exist, so discard it
     
     // clear all outstanding segments acked by TCP receiver
     // a segment is considered outstanding from the time it is sent until an ACK covering all its data is received
@@ -86,7 +86,8 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
         } 
     }
 
-    // only reset the timer if some outstanding segments are acked
+    // TCP only keeps one timer for the oldest outstanding segment
+    // so only reset the timer if some outstanding segments are acked
     // otherwise, keep the timer running and resend until at least the oldest segment is acked
     if (is_outstanding_cleared) {
         _consecutive_retransmission_cnt = 0;
@@ -111,7 +112,7 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
         _segments_out.push(_outstanding_seg.front().second); // retransmit if timeout
         
         // exponential backoff and increment cnt, as long as the ACK is not received
-        // don't back off RTO if the window size is 0 (by test cases)
+        // if window size is 0, it's not necessarily congestion, so no need to increment cnt and back off to avoid deadlock
         if (_window_size > 0) {
             ++_consecutive_retransmission_cnt;
             _timer.set_rto(_timer.get_rto() * 2); 
