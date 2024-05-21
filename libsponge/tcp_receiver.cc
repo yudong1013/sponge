@@ -19,7 +19,7 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
         _isn = header.seqno; // if the current segment is SYN, the seqno is isn
     }
     
-    uint64_t checkpoint = _reassembler.stream_out().bytes_written(); // index of the last reassmebled byte
+    uint64_t checkpoint = _reassembler.stream_out().bytes_written(); // index of the last reassmebled byte (with SYN)
     uint64_t abs_seqno = unwrap(header.seqno, _isn.value(), checkpoint);
     uint64_t stream_index = abs_seqno - 1 + (header.syn ? 1: 0); // the same only if the current segment is SYN, otherwise increase by 1 for the SYN processed before
     _reassembler.push_substring(seg.payload().copy(), stream_index, header.fin); // FIN signals eof
@@ -29,8 +29,8 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
 optional<WrappingInt32> TCPReceiver::ackno() const {
     if (!_isn.has_value()) return nullopt; // no ACK if no SYN received before
     
-    // Ackno is the first unassmebled byte, indicating where the next segment should be placed
-    uint64_t abs_seq = _reassembler.stream_out().bytes_written() + 1 + // +1 for SYN; byte_written is equal to the index of the next byte expected
+    // ackno is the first unassmebled byte, indicating where the next segment should be placed
+    uint64_t abs_seq = _reassembler.stream_out().bytes_written() + 1 + // byte_written is equal to the index of the last reassmebled byte (with SYN); add 1 for the next byte
                     (_reassembler.stream_out().input_ended() ? 1 : 0); // if input ended, add 1 for the FIN
     
     return wrap(abs_seq, _isn.value());
