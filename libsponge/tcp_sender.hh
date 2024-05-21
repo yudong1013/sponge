@@ -73,8 +73,8 @@ class TCPSender {
     uint16_t _window_size = 1;
 
     //! Flags for SYN and FIN
-    bool _set_syn_flag = false;
-    bool _set_fin_flag = false;
+    bool _syn_flag = false;
+    bool _fin_flag = false;
 
 
   public:

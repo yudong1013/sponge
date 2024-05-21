@@ -26,7 +26,7 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
     if (eof) _eof_index = min(_eof_index, index + data.size());
 
     auto left = max(index, _exp_index); // the left bound of the segment
-    auto right = min(index + data.size(), min(_exp_index - _output.buffer_size() + _capacity, _eof_index)); // the right bound of the segment
+    auto right = min(index + data.size(), min(_exp_index - _output.buffer_size() + _capacity, _eof_index)); // the right bound of the segment, constrained by data size, capacity index, and eof
     
     for (size_t i = left, j = left - index; i < right; ++i, ++j) { // j is the first non-overlapped index of the substring
         auto &t = _stream[i % _capacity];
