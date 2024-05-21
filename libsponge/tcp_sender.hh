@@ -6,8 +6,33 @@
 #include "tcp_segment.hh"
 #include "wrapping_integers.hh"
 
+#include <cstdint>
+#include <deque>
 #include <functional>
 #include <queue>
+#include <utility>
+
+//! \brief The timer of TCP sender that starts after the segment is sent.
+class Timer {
+private:
+    uint32_t _cur_time = 0;
+    uint32_t _rto = 0; // retransmission timeout
+    bool _is_running = false;
+public:
+    Timer() = default;
+    Timer(const uint32_t rto) : _rto(rto) {}
+    // void start() { _is_running = true; }
+    void stop() { _is_running = false; }
+    void set_rto(const uint32_t rto) { _rto = rto; }
+    uint32_t get_rto() const { return _rto; }
+    void restart() { _is_running = true, _cur_time = 0; }
+    void tick(const size_t ms_since_last_tick) { // track the passage of time in ms
+        if (_is_running)
+            _cur_time += ms_since_last_tick; 
+    }
+    bool is_expired() const { return _is_running && _cur_time >= _rto; }
+    bool is_running() const { return _is_running; }
+};
 
 //! \brief The "sender" part of a TCP implementation.
 
@@ -31,6 +56,26 @@ class TCPSender {
 
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
+
+    //! The timer for retransmission
+    Timer _timer;
+
+    //! The queue of outstanding segments; Use queue to make sure that the first element is the oldest
+    std::queue<std::pair<uint64_t, TCPSegment>> _outstanding_seg{};
+
+    //! The number of consecutive retransmissions of the same segment
+    uint32_t _consecutive_retransmission_cnt = 0;
+
+    //! The number of bytes sent but not yet acknowledged, including SYN and FIN
+    size_t _bytes_in_flight = 0;
+
+    //! Window size, 1 by default
+    uint16_t _window_size = 1;
+
+    //! Flags for SYN and FIN
+    bool _set_syn_flag = false;
+    bool _set_fin_flag = false;
+
 
   public:
     //! Initialize a TCPSender
