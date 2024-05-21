@@ -34,8 +34,8 @@ uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
     // all three possible ranges where the closest seqno falls into
     auto high32bit_upper = (checkpoint + (1 << 31)) & 0xFFFFFFFF00000000;
     auto high32bit_lower = (checkpoint - (1 << 31)) & 0xFFFFFFFF00000000;
-    auto high32bit_same = checkpoint & 0xFFFFFFFF00000000;
-    
+    auto high32bit_same = checkpoint & 0xFFFFFFFF00000000; // NOT TESTED; NO CHECKPTS AROUND 2^16
+
     auto res_upper = low32bit | high32bit_upper;
     auto res_lower = low32bit | high32bit_lower;
     auto res_same = low32bit | high32bit_same;
