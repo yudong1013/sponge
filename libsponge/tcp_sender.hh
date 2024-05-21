@@ -21,7 +21,6 @@ private:
 public:
     Timer() = default;
     Timer(const uint32_t rto) : _rto(rto) {}
-    // void start() { _is_running = true; }
     void stop() { _is_running = false; }
     void set_rto(const uint32_t rto) { _rto = rto; }
     uint32_t get_rto() const { return _rto; }
