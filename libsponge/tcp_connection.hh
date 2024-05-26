@@ -21,6 +21,18 @@ class TCPConnection {
     //! in case the remote TCPConnection doesn't know we've received its whole stream?
     bool _linger_after_streams_finish{true};
 
+    //! Number of milliseconds since the last segment was received
+    size_t _time_since_last_segment_received = 0;
+
+    //! Is the connection still alive in any way?
+    bool _is_active = true;
+
+    //! Send a RST segment and close the connection
+    void _set_rst_state(const bool send_rst);
+
+    //! Add an ACK and window size to the segments to send
+    void _add_ackno_and_window_and_send();
+
   public:
     //! \name "Input" interface for the writer
     //!@{
