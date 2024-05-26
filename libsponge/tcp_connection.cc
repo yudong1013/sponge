@@ -69,6 +69,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         TCPState::state_summary(_receiver) == TCPReceiverStateSummary::FIN_RECV && // input ended (#1)
         TCPState::state_summary(_sender) == TCPSenderStateSummary::FIN_ACKED) { // outbound stream ended and acked (#2 #3)
         _is_active = false;
+        _linger_after_streams_finish = false;
         return;
     }
     
