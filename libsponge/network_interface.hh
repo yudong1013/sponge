@@ -1,12 +1,18 @@
 #ifndef SPONGE_LIBSPONGE_NETWORK_INTERFACE_HH
 #define SPONGE_LIBSPONGE_NETWORK_INTERFACE_HH
 
+#include "address.hh"
 #include "ethernet_frame.hh"
+#include "ethernet_header.hh"
 #include "tcp_over_ip.hh"
 #include "tun.hh"
 
+#include <cstddef>
+#include <cstdint>
+#include <list>
 #include <optional>
 #include <queue>
+#include <unordered_map>
 
 //! \brief A "network interface" that connects IP (the internet layer, or network layer)
 //! with Ethernet (the network access layer, or link layer).
@@ -31,6 +37,12 @@
 //! and learns or replies as necessary.
 class NetworkInterface {
   private:
+    //! ARP table entry
+    struct ARPEntry {
+      EthernetAddress eth_addr;
+      size_t ttl; // time to live
+    };
+
     //! Ethernet (known as hardware, network-access-layer, or link-layer) address of the interface
     EthernetAddress _ethernet_address;
 
@@ -40,7 +52,25 @@ class NetworkInterface {
     //! outbound queue of Ethernet frames that the NetworkInterface wants sent
     std::queue<EthernetFrame> _frames_out{};
 
+    //! ARP table; maps IP addresses (in 32-bit representation) to MAC addresses
+    std::unordered_map<uint32_t, ARPEntry> _arp_table{};
+
+    //! IP datagrams waiting for ARP response to the IP address; will be sent after ARP response received
+    std::unordered_map<uint32_t, std::list<std::pair<Address, InternetDatagram>>> _waiting_internet_datagrams{};
+
+    //! the expiration time of the IP datagrams above
+    std::unordered_map<uint32_t, size_t> _waiting_arp_response_ip_addr{};
+
+    //! send the ethernet frame right away if the destination is known
+    void _send(const EthernetAddress &dst, const uint16_t type, BufferList &&payload);
+
   public:
+    //! ARP Entry expires after 30s
+    static constexpr uint32_t ARP_ENTRY_TTL_MS = 30 * 1000;
+
+    //! ARP Response expires after 5s
+    static constexpr uint32_t ARP_RESPONSE_TTL_MS = 5 * 1000; 
+
     //! \brief Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer) addresses
     NetworkInterface(const EthernetAddress &ethernet_address, const Address &ip_address);
 
