@@ -29,14 +29,37 @@ void Router::add_route(const uint32_t route_prefix,
     cerr << "DEBUG: adding route " << Address::from_ipv4_numeric(route_prefix).ip() << "/" << int(prefix_length)
          << " => " << (next_hop.has_value() ? next_hop->ip() : "(direct)") << " on interface " << interface_num << "\n";
 
-    DUMMY_CODE(route_prefix, prefix_length, next_hop, interface_num);
-    // Your code here.
+    // save the route for later use
+    _routing_table.emplace_back(route_prefix, prefix_length, next_hop, interface_num);
 }
 
 //! \param[in] dgram The datagram to be routed
 void Router::route_one_datagram(InternetDatagram &dgram) {
-    DUMMY_CODE(dgram);
-    // Your code here.
+    // match the destination IP address of the datagram to a route in the routing table
+    auto ip = dgram.header().dst;
+    auto best_match = _routing_table.begin();
+    // find the longest prefix match
+    for (auto it = _routing_table.begin(); it != _routing_table.end(); it = std::next(it)) {
+        // in this compiler, right shift 32 bits is not equal to right shift 0 bits, so we need to handle them separately
+        // XOR makes equal bits 0
+        if (it -> prefix_length == 0 ||  (it -> route_prefix ^ ip) >> (32 - it -> prefix_length) == 0) { // match the prefix
+            if (it -> prefix_length > best_match -> prefix_length) { // longest prefix among all matched
+                best_match = it;
+            }
+        }
+    }
+    // update the TTL and send the datagram to the next hop or the destination
+    if (best_match != _routing_table.end() && dgram.header().ttl > 1) {
+        --dgram.header().ttl; // decrement the TTL of IP datagram to prevent infinite routing loops
+        auto &next_interface = interface(best_match -> interface_num); // find the correct interface to send the datagram
+        // send to the next hop if it exists, otherwise send to the destination directly
+        if (best_match -> next_hop.has_value()) {
+            next_interface.send_datagram(dgram, best_match -> next_hop.value());
+        } else {
+            next_interface.send_datagram(dgram, Address::from_ipv4_numeric(ip));
+        }
+    }
+    // discard the datagram if no route matches or TTL is 0
 }
 
 void Router::route() {
